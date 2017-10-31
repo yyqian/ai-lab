@@ -11,7 +11,7 @@ private:
 public:
   const int layers;
   const vector<int> nodes;
-  W(vector<int> st) : layers(st.size()), nodes(st), data() {
+  W(const vector<int> &st) : layers(st.size()), nodes(st), data() {
     for (int i = 0; i < layers - 1; ++i) {
       data.push_back(vector<double>(st[i] * st[i + 1], 0.0));
     }
@@ -47,7 +47,7 @@ private:
 public:
   const int layers;
   const vector<int> nodes;
-  Y(vector<int> st) : layers(st.size()), nodes(st), data() {
+  Y(const vector<int> &st) : layers(st.size()), nodes(st), data() {
     for (int l = 0; l < layers; ++l) {
       data.push_back(vector<double>(st[l], 0.0));
     }
