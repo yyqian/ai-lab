@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <cmath>
 
@@ -14,9 +15,17 @@ public:
     for (int i = 0; i < layers - 1; ++i) {
       data.push_back(vector<double>(st[i] * st[i + 1], 0.0));
     }
+    randomize();
   }
-  inline double &at(int n, int i, int j) {
-    return data[n][i * nodes[n + 1] + j];
+  double &at(int l, int i, int j) {
+    return data[l][i * nodes[l + 1] + j];
+  }
+  void randomize() {
+    for (vector<double> &v : data) {
+      for (double &ele : v) {
+        ele = static_cast<double>(rand()) / RAND_MAX;
+      }
+    }
   }
   void print() {
     for (int n = 0; n < layers - 1; ++n) {
@@ -43,7 +52,10 @@ public:
       data.push_back(vector<double>(st[l], 0.0));
     }
   }
-  inline double &at(int layer, int i) {
+  vector<double> &at(int layer) {
+    return data[layer];
+  }
+  double &at(int layer, int i) {
     return data[layer][i];
   }
   void print() {
@@ -58,14 +70,40 @@ public:
   }
 };
 
-double sigmoid(double z) {
+class Patterns {
+private:
+  vector<vector<double>> inputs;
+  vector<vector<double>> outputs;
+public:
+  int size;
+  Patterns() : size(0), inputs(), outputs() {
+  }
+  void add(const vector<double> &&input, const vector<double> &&output) {
+    inputs.emplace_back(input);
+    outputs.emplace_back(output);
+    ++size;
+  }
+  vector<vector<double>> &getInputs() {
+    return inputs;
+  }
+  vector<vector<double>> &getOutputs() {
+    return outputs;
+  }
+};
+
+// f(z) = 1 / [1 + exp(-z)]
+inline double sigmoid(double z) {
   return 1.0 / (1.0 + std::exp(-z));
 }
 
+// df(z)/dz = f(z)[1 - f(z)]
+inline double sigmoid_prime(double f) {
+  return f * (1.0 - f);
+}
+
 void FeedForward(W &w, Y &y, const vector<double> &input) {
-  for (int i = 0; i < input.size(); ++i) {
-    y.at(0, i) = input[i];
-  }
+  // the first layer of Y is the input
+  y.at(0).assign(input.begin(), input.end());
   const int layers = y.layers;
   const vector<int> &nodes = y.nodes;
   for (int l = 1; l < layers; ++l) {
@@ -74,28 +112,25 @@ void FeedForward(W &w, Y &y, const vector<double> &input) {
       for (int i = 0; i < nodes[l - 1]; ++i) {
         sum += w.at(l - 1, i, j) * y.at(l - 1, i);
       }
+      // sigmoid is the activation function
       y.at(l, j) = sigmoid(sum);
     }
   }
 }
 
-vector<double> ApplyModel(W &w, const vector<double> &input) {
+vector<double> Apply(W &w, const vector<double> &input) {
   Y y(w.nodes);
   FeedForward(w, y, input);
-  vector<double> result;
-  for (int i = 0; i < w.nodes[w.layers - 1]; ++i) {
-    result.push_back(y.at(w.layers - 1, i));
-  }
-  return result;
+  return y.at(w.layers - 1);
 }
 
-void OutputDelta(const vector<double> &t, vector<double> &delta, Y &y) {
+void OutputDelta(const vector<double> &o, vector<double> &delta, Y &y) {
   delta.clear();
   const int lastLayer = y.layers - 1;
-  for (size_t i = 0; i < t.size(); ++i) {
-    double t_i = t[i];
+  for (size_t i = 0; i < o.size(); ++i) {
+    double o_i = o[i];
     double y_i = y.at(lastLayer, i);
-    delta.push_back((t_i - y_i) * y_i *(1.0 - y_i));
+    delta.push_back((o_i - y_i) * sigmoid_prime(y_i));
   }
 }
 
@@ -110,11 +145,11 @@ void HiddenDelta(const vector<double> delta_next, vector<double> &delta, W &w, Y
     for (size_t i = 0; i < m; ++i) {
       sum += delta_next[i] * w.at(layer, j, i);
     }
-    delta.push_back(sum * y_i * (1.0 - y_i));
+    delta.push_back(sum * sigmoid_prime(y_i));
   }
 }
 
-void BP(W &w, vector<Y> &ys, const vector<vector<double>> &outputs, const double alpha) {
+void Backpropagation(W &w, vector<Y> &ys, const vector<vector<double>> &outputs, const double alpha) {
   const int layers = ys[0].layers;
   const vector<int> &nodes = ys[0].nodes;
   const int patterns = ys.size();
@@ -137,33 +172,40 @@ void BP(W &w, vector<Y> &ys, const vector<vector<double>> &outputs, const double
   }
 }
 
+string join(vector<double> vec) {
+  ostringstream ss;
+  for (double v : vec) {
+    ss << ' ' << v;
+  }
+  return ss.str();
+}
+
 int main(int argc, char** argv) {
-  vector<vector<double>> inputs;
-  vector<vector<double>> outputs;
-  for (int i = 0; i < 100; ++i) {
-    vector<double> x;
-    vector<double> y;
-    x.push_back(i);
-    y.push_back(i % 2);
-    inputs.push_back(x);
-    outputs.push_back(y);
-  }
-  vector<int> nodes{ 1, 2, 1 };
+  Patterns patterns;
+  // XOR
+  patterns.add(vector<double>{1, 1}, vector<double>{0});
+  patterns.add(vector<double>{1, 0}, vector<double>{1});
+  patterns.add(vector<double>{0, 1}, vector<double>{1});
+  patterns.add(vector<double>{0, 0}, vector<double>{0});
+  const double alpha = 1.0;
+  const int iters = 100000;
+  const vector<int> nodes{ 2, 5, 1 };
   W w(nodes);
-  w.at(0, 0, 0) = 0.29;
-  w.at(0, 0, 1) = 0.31;
-  w.at(1, 0, 0) = 0.42;
-  w.at(1, 1, 0) = 0.64;
   w.print();
-  vector<Y> ys(inputs.size(), Y(nodes));
-  for (int iter = 0; iter < 20; ++iter) {
-    for (int p = 0; p < inputs.size(); ++p) {
-      FeedForward(w, ys[p], inputs[p]);
+  vector<Y> ys(patterns.size, Y(nodes));
+  for (int iter = 0; iter < iters; ++iter) {
+    for (int p = 0; p < patterns.size; ++p) {
+      FeedForward(w, ys[p], patterns.getInputs()[p]);
     }
-    BP(w, ys, outputs, 0.1);
-    w.print();
+    Backpropagation(w, ys, patterns.getOutputs(), alpha);
+    if (iter % (iters / 10) == 0) {
+      cout << endl;
+      cout << "====== iter " << iter << " ======" << endl;
+      w.print();
+      for (vector<double> x : patterns.getInputs()) {
+        cout << join(x) << ": " << Apply(w, x)[0] << endl;
+      }
+    }
   }
-  cout << ApplyModel(w, vector<double>(1, 102.0))[0] << endl;
-  cout << ApplyModel(w, vector<double>(1, 103.0))[0] << endl;
   return 0;
 }

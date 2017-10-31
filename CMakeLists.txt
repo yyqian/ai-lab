@@ -1,2 +1,2 @@
-project (hello-cmake)
-add_executable(hello-cmake hello.cpp)
+project (bp)
+add_executable(bp bp.cpp)
