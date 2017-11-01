@@ -58,6 +58,12 @@ public:
   double &at(int layer, int i) {
     return data[layer][i];
   }
+  vector<double> &operator[](const size_t layer) {
+    return data[layer];
+  }
+  const vector<double> &operator[](const size_t layer) {
+    return data[layer];
+  }
   void print() {
     cout << "Y:" << endl;
     for (int l = 0; l < layers; ++l) {
