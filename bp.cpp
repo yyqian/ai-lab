@@ -1,117 +1,6 @@
-#include <iostream>
-#include <sstream>
-#include <vector>
-#include <cmath>
+#include "ann.h"
 
 using namespace std;
-
-class W {
-private:
-  vector<vector<double>> data;
-  const int layers;
-  const vector<int> neurons;
-public:
-  W(const vector<int> &neurons) : layers(neurons.size()), neurons(neurons), data() {
-    for (int i = 0; i < layers - 1; ++i) {
-      data.push_back(vector<double>(neurons[i] * neurons[i + 1], 0.0));
-    }
-    randomize();
-  }
-  double &at(int l, int i, int j) {
-    return data[l][i * neurons[l + 1] + j];
-  }
-  const double &at(int l, int i, int j) const {
-    return data[l][i * neurons[l + 1] + j];
-  }
-  const int getLayers() const {
-    return layers;
-  }
-  const vector<int> &getNeurons() const {
-    return neurons;
-  }
-  void randomize() {
-    for (vector<double> &v : data) {
-      for (double &ele : v) {
-        ele = static_cast<double>(rand()) / RAND_MAX;
-      }
-    }
-  }
-  void print() const {
-    for (int n = 0; n < layers - 1; ++n) {
-      cout << "W[" << n << "]:" << endl;
-      for (int i = 0; i < neurons[n]; ++i) {
-        for (int j = 0; j < neurons[n + 1]; ++j) {
-          cout << " " << at(n, i, j);
-        }
-        cout << endl;
-      }
-    }
-  }
-};
-
-class Y {
-private:
-  vector<vector<double>> data;
-  const vector<int> neurons;
-  const int layers;
-public:
-  Y(const vector<int> &neurons) : neurons(neurons), layers(neurons.size()), data() {
-    for (int l = 0; l < layers; ++l) {
-      data.push_back(vector<double>(neurons[l], 0.0));
-    }
-  }
-  vector<double> &operator[](const size_t layer) {
-    return data[layer];
-  }
-  const vector<double> &operator[](const size_t layer) const {
-    return data[layer];
-  }
-  double &at(const size_t layer, const size_t neuron) {
-    return data[layer][neuron];
-  }
-  const double &at(const size_t layer, const size_t neuron) const {
-    return data[layer][neuron];
-  }
-  const int getLayers() const {
-    return layers;
-  }
-  const vector<int> &getNeurons() const {
-    return neurons;
-  }
-  void print() const {
-    cout << "Y:" << endl;
-    for (int l = 0; l < layers; ++l) {
-      for (int i = 0; i < neurons[l]; ++i) {
-        cout << " " << data[l][i];
-      }
-      cout << endl;
-    }
-  }
-};
-
-class Patterns {
-private:
-  vector<vector<double>> inputs;
-  vector<vector<double>> outputs;
-  int sz;
-public:
-  Patterns() : sz(0), inputs(), outputs() {
-  }
-  void add(const vector<double> &&input, const vector<double> &&output) {
-    inputs.emplace_back(input);
-    outputs.emplace_back(output);
-    ++sz;
-  }
-  int size() const {
-    return sz;
-  }
-  const vector<vector<double>> &getInputs() const {
-    return inputs;
-  }
-  const vector<vector<double>> &getOutputs() const {
-    return outputs;
-  }
-};
 
 // f(z) = 1 / [1 + exp(-z)]
 inline double sigmoid(double z) {
@@ -179,7 +68,7 @@ void Backprop(W &w, const vector<Y> &ys, const vector<vector<double>> &outputs, 
   if (ys.empty()) {
     return;
   }
-  const int patterns = ys.size();
+  const int patterns = static_cast<const int>(ys.size());
   const int layers = ys[0].getLayers();
   const vector<int> &nodes = ys[0].getNeurons();
   for (int p = 0; p < patterns; ++p) {
@@ -209,10 +98,10 @@ string Serialize(const vector<double> &vec) {
   return ss.str();
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   const double learning_rate = 1.0;
   const int epoch_max = 100000;
-  const vector<int> neurons{ 2, 3, 4, 1 };
+  const vector<int> neurons{2, 3, 4, 1};
   // XOR
   Patterns patterns;
   patterns.add(vector<double>{1, 1}, vector<double>{0});
@@ -221,7 +110,7 @@ int main(int argc, char** argv) {
   patterns.add(vector<double>{0, 0}, vector<double>{0});
   W w(neurons);
   w.print();
-  vector<Y> ys(patterns.size(), Y(neurons));
+  vector<Y> ys(static_cast<unsigned long>(patterns.size()), Y(neurons));
   for (int epoch = 0; epoch < epoch_max; ++epoch) {
     for (int p = 0; p < patterns.size(); ++p) {
       FeedForward(w, ys[p], patterns.getInputs()[p]);
@@ -238,5 +127,5 @@ int main(int argc, char** argv) {
       }
     }
   }
-  return 0;
+  return EXIT_SUCCESS;
 }
