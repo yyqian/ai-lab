@@ -6,7 +6,7 @@
 
 using namespace std;
 
-void DrawLine(int len) {
+void PrintLine(int len = 100) {
   cout << setfill('-') << setw(len) << '-' << endl;
   cout << setfill(' ') << setw(0);
 }
@@ -92,15 +92,15 @@ int main(int argc, char **argv) {
   }
   // debug w
   for (auto &e : w) {
-    DrawLine(80);
+    PrintLine();
     PrintW(e);
   }
-  DrawLine(80);
+  PrintLine();
   PrintV(w[0][0]);
-  DrawLine(80);
+  PrintLine();
   auto output = Multiply(w[0][1], w[1]);
   PrintV(output);
-  DrawLine(80);
+  PrintLine();
   output = Softmax(output);
   PrintV(output);
   cout << "Max Index: " << MaxIndex(output) << endl;
